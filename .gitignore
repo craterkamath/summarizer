@@ -66,3 +66,6 @@ target/
 
 #model file 
 prefix_suffix.json
+
+# Json Files
+*.json
