@@ -12,6 +12,7 @@ import pandas as pd
 reload(sys)
 sys.setdefaultencoding('utf-8')
 import pickle
+import mtranslate as m
 
 
 class TfIdf:
@@ -160,6 +161,21 @@ class TfIdf:
 		outFile.write('\n')
 		outFile.write("--------------------- Summary -----------------------------")
 		outFile.write('\n')
+		try:
+		    topSentencesToFile = m.translate(topSentencesToFile.encode('utf-8'), "en", "kn").encode('utf-8')
+		except Exception as e:
+		    print(e, "Out File Name:", outfileName)
+		    MX_LIMIT = 2000
+		    sentences_len = len(topSentencesToFile)
+		    sentences_split = topSentencesToFile.split(".")
+		    resp_sent = ""
+		    while sentences_split:
+		        request_sent = ""
+		        while(sentences_split and len(request_sent) + len(sentences_split[0]) < MX_LIMIT):
+		            request_sent += sentences_split[0]
+		            sentences_split.pop(0)
+		        resp_sent = resp_sent + ". " + m.translate(request_sent.encode('utf-8'), "en", "kn").encode('utf-8')
+		    topSentencesToFile = resp_sent
 		outFile.write(topSentencesToFile)
 		outFile.close()
 

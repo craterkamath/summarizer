@@ -12,6 +12,7 @@ import pandas as pd
 reload(sys)
 sys.setdefaultencoding('utf-8')
 import pickle
+import mtranslate as m
 
 
 class TfIdf:
@@ -44,7 +45,9 @@ class TfIdf:
 
     def setup(self):
         for cp in self.cps:
-            self.corpus = json.load(open(cp, 'r'))
+            df = pd.read_csv(cp)
+            self.corpus = json.loads(df.to_json(orient = "records"))
+            # import pdb; pdb.set_trace()
             self.buildCorpus()
         self.calculateDf()
 
@@ -64,17 +67,19 @@ class TfIdf:
 
     def buildCorpus(self):
         for i in range(0,len(self.corpus)):
-            content = '. '.join(self.corpus[i]['content'])
+            # content = '.'.join(self.corpus[i]['t_content'].replace("\n", " "))
+            content = self.corpus[i]['t_content'].replace("\n", " ")
             content.replace('..','.')
             self.trainBloblist.append(tb(content))
         self.trainBloblistLength = len(self.trainBloblist)
 
     def buildTestData(self):
         self.testBloblist = {}
-        for key, value in self.dev.iteritems():
-            content = '. '.join(self.dev[key]['content'])
+        for idx in range(0, len(self.dev)):
+            # content = '.'.join(self.dev[idx]['t_content'].replace("\n", " "))
+            content = self.dev[idx]['t_content'].replace("\n", " ")
             content.replace('..','.')
-            self.testBloblist[key] = (tb(content))
+            self.testBloblist[idx] = (tb(content))
         self.testBloblistLength = len(self.testBloblist)
 
     def calculateDf(self):
@@ -87,7 +92,8 @@ class TfIdf:
                 self.wordDfDict[word] += 1
 
     def extractSummary(self, devPath, outFileName):
-        self.dev = json.load(open(devPath, 'r'))
+        df = pd.read_csv(devPath)
+        self.dev = json.loads(df.to_json(orient = "records"))
         self.buildTestData()
         out = {}
         c = {0:0,1:0,2:0}
@@ -158,13 +164,38 @@ class TfIdf:
         outFile.write('\n')
         outFile.write("--------------------- Summary -----------------------------")
         outFile.write('\n')
+        try:
+            topSentencesToFile = m.translate(topSentencesToFile.encode('utf-8'), "en", "kn").encode('utf-8')
+        except Exception as e:
+            print(e, "Out File Name:", outfileName)
+            MX_LIMIT = 2000
+            sentences_len = len(topSentencesToFile)
+            sentences_split = topSentencesToFile.split(".")
+            resp_sent = ""
+            while sentences_split:
+                request_sent = ""
+                while(sentences_split and len(request_sent) + len(sentences_split[0]) < MX_LIMIT):
+                    request_sent += sentences_split[0]
+                    sentences_split.pop(0)
+                resp_sent = resp_sent + ". " + m.translate(request_sent.encode('utf-8'), "en", "kn").encode('utf-8')
+            topSentencesToFile = resp_sent  
         outFile.write(topSentencesToFile)
         outFile.close()
 
-corpusPath = ["../crawler/udayavani_cinema_news.json", "../crawler/udayavani_sports_news.json", "../crawler/udayavani_state_news.json"]
+# corpusPath = ["../crawler/udayavani_cinema_news.json", "../crawler/udayavani_sports_news.json", "../crawler/udayavani_state_news.json"]
+# #corpusPath = ["cinema_test.json", "state_test.json","sports_test.json"]
+# t = TfIdf(corpusPath, 'results' )
+# t.setup()
+# t.extractSummary("cinema_test.json", "cinema.json")
+# t.extractSummary("state_test.json", "state.json")
+# #t.extractSummary("sports_test.json", "sports.json")
+
+#corpusPath = ["../crawler/udayavani_cinema_news.json", "../crawler/udayavani_sports_news.json", "../crawler/udayavani_state_news.json"]
 #corpusPath = ["cinema_test.json", "state_test.json","sports_test.json"]
-t = TfIdf(corpusPath, 'results' )
+corpusPath = ["sample_data.csv"]
+t = TfIdf(corpusPath, 'results_csv_stemmer' )
 t.setup()
-t.extractSummary("cinema_test.json", "cinema.json")
-t.extractSummary("state_test.json", "state.json")
+# t.extractSummary("cinema_test.json", "cinema.json")
+# t.extractSummary("state_test.json", "state.json")
 #t.extractSummary("sports_test.json", "sports.json")
+t.extractSummary("sample_data.csv", "sample_data.json")
