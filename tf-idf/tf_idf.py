@@ -15,6 +15,7 @@ import pickle
 import mtranslate as m
 from rouge import Rouge
 import csv
+import os
 
 rouge = Rouge()
 
@@ -143,9 +144,9 @@ class TfIdf:
 			t = outFileName.split(".")[0]
 			self.writeToFile(str(articleNumber)+t, sentencesToFile, topSentencesToFile)
 		print c
-		outfileName = "system_"+outFileName
-		with open(outfileName, 'w') as outfile:
-			json.dump(out, outfile)
+		# outfileName = "system_"+outFileName
+		# with open(outfileName, 'w') as outfile:
+		# 	json.dump(out, outfile)
 
 	def getCategoryNumber(self, blob):
 		#naive bayes to determine category
@@ -217,8 +218,14 @@ class TfIdf:
 corpusPath = ["sample_data.csv"]
 t = TfIdf(corpusPath, 'results_csv' )
 t.setup()
-# t.extractSummary("cinema_test.json", "cinema.json")
-# t.extractSummary("state_test.json", "state.json")
-#t.extractSummary("sports_test.json", "sports.json")
 t.extractSummary("sample_data.csv", "sample_data.json")
 t.to_csv()
+
+# PATH_FILES = "."
+#  corpusPath = list(os.listdir(PATH_FILES))
+# t = TfIdf(corpusPath, 'results_csv' )
+# t.setup()
+# for file in os.listdir(PATH_FILES):
+#     if file.endswith(".csv"):
+#         t.extractSummary(PATH_FILES + "/" + file, file)
+# t.to_csv()

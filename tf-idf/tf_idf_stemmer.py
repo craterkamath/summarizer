@@ -13,6 +13,10 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 import pickle
 import mtranslate as m
+from rouge import Rouge
+import csv
+
+rouge = Rouge()
 
 
 class TfIdf:
@@ -21,6 +25,7 @@ class TfIdf:
         self.cps = corpusPath
         self.corpus = ""#json.load(open(corpusPath[0], 'r'))
         self.outFileDir = outDir
+        self.rougedir = {}
 
         if not os.path.exists(self.outFileDir):
             os.makedirs(self.outFileDir)
@@ -73,7 +78,7 @@ class TfIdf:
             self.trainBloblist.append(tb(content))
         self.trainBloblistLength = len(self.trainBloblist)
 
-    def buildTestData(self):
+    def buildTestData(self, devPath = None):
         self.testBloblist = {}
         for idx in range(0, len(self.dev)):
             # content = '.'.join(self.dev[idx]['t_content'].replace("\n", " "))
@@ -95,7 +100,7 @@ class TfIdf:
     def extractSummary(self, devPath, outFileName):
         df = pd.read_csv(devPath)
         self.dev = json.loads(df.to_json(orient = "records"))
-        self.buildTestData()
+        self.buildTestData(devPath)
         out = {}
         c = {0:0,1:0,2:0}
         for i, blob in self.testBloblist.iteritems():
@@ -142,9 +147,9 @@ class TfIdf:
             t = outFileName.split(".")[0]
             self.writeToFile(str(articleNumber)+t, sentencesToFile, topSentencesToFile)
         print c
-        outfileName = "systemStemmer_"+outFileName
-        with open(outfileName, 'w') as outfile:
-            json.dump(out, outfile)
+        # outfileName = "systemStemmer_"+outFileName
+        # with open(outfileName, 'w') as outfile:
+        #     json.dump(out, outfile)
 
     def getCategoryNumber(self, blob):
         #naive bayes to determine category
@@ -187,7 +192,7 @@ class TfIdf:
         outFile.write(topSentencesToFile)
         outFile.close()
 
-    def to_csv(self, fileName = "output.csv"):
+    def to_csv(self, fileName = "output_stemmer.csv"):
         field_names = ["id", "ground_truth", "predicted", "rouge-1", "rouge-2", "rouge-l"]
         with open(fileName, 'w') as f:
             writer = csv.writer(f)
@@ -199,13 +204,13 @@ class TfIdf:
                 writer.writerow([key,
                                     value["ground_truth"],
                                     value["predicted"],
-                                    value["rouge"]["rouge-1"]["f"],
-                                    value["rouge"]["rouge-2"]["f"],
-                                    value["rouge"]["rouge-l"]["f"],
+                                    value["rouge"][0]["rouge-1"]["f"],
+                                    value["rouge"][0]["rouge-2"]["f"],
+                                    value["rouge"][0]["rouge-l"]["f"],
                                     ])
-                rouge_1.append(value["rouge"]["rouge-1"]["f"])
-                rouge_2.append(value["rouge"]["rouge-2"]["f"])
-                rouge_l.append(value["rouge"]["rouge-l"]["f"])
+                rouge_1.append(value["rouge"][0]["rouge-1"]["f"])
+                rouge_2.append(value["rouge"][0]["rouge-2"]["f"])
+                rouge_l.append(value["rouge"][0]["rouge-l"]["f"])
             writer.writerow(["Mean", "Mean", "Mean",
                             sum(rouge_1)/float(len(rouge_1)),
                             sum(rouge_2)/float(len(rouge_2)),
@@ -224,8 +229,14 @@ class TfIdf:
 corpusPath = ["sample_data.csv"]
 t = TfIdf(corpusPath, 'results_csv_stemmer' )
 t.setup()
-# t.extractSummary("cinema_test.json", "cinema.json")
-# t.extractSummary("state_test.json", "state.json")
-#t.extractSummary("sports_test.json", "sports.json")
 t.extractSummary("sample_data.csv", "sample_data.json")
 t.to_csv()
+
+# PATH_FILES = "."
+#  corpusPath = list(os.listdir(PATH_FILES))
+# t = TfIdf(corpusPath, 'results_csv_stemmer' )
+# t.setup()
+# for file in os.listdir(PATH_FILES):
+#     if file.endswith(".csv"):
+#         t.extractSummary(PATH_FILES + "/" + file, file)
+# t.to_csv()
