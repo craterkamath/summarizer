@@ -13,7 +13,10 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 import pickle
 import mtranslate as m
+from rouge import Rouge
+import csv
 
+rouge = Rouge()
 
 class TfIdf:
 
@@ -21,6 +24,7 @@ class TfIdf:
 		self.cps = corpusPath
 		self.corpus = ""#json.load(open(corpusPath[0], 'r'))
 		self.outFileDir = outDir
+		self.rougedir = {}
 
 		if not os.path.exists(self.outFileDir):
 			os.makedirs(self.outFileDir)
@@ -72,12 +76,13 @@ class TfIdf:
 			self.trainBloblist.append(tb(content))
 		self.trainBloblistLength = len(self.trainBloblist)
 
-	def buildTestData(self):
+	def buildTestData(self, devPath = None):
 		self.testBloblist = {}
 		for idx in range(0, len(self.dev)):
 			# content = '.'.join(self.dev[idx]['t_content'].replace("\n", " "))
 			content = self.dev[idx]['t_content'].replace("\n", " ")
 			content.replace('..','.')
+			self.rougedir[str(idx) + devPath.split(".")[0]] = {"ground_truth": self.dev[idx]['summary'], "predicted": "", "rouge": 0.0}
 			self.testBloblist[idx] = (tb(content))
 		self.testBloblistLength = len(self.testBloblist)
 
@@ -92,7 +97,7 @@ class TfIdf:
 	def extractSummary(self, devPath, outFileName):
 		df = pd.read_csv(devPath)
 		self.dev = json.loads(df.to_json(orient = "records"))
-		self.buildTestData()
+		self.buildTestData(devPath)
 		out = {}
 		c = {0:0,1:0,2:0}
 		for i, blob in self.testBloblist.iteritems():
@@ -176,8 +181,36 @@ class TfIdf:
 		            sentences_split.pop(0)
 		        resp_sent = resp_sent + ". " + m.translate(request_sent.encode('utf-8'), "en", "kn").encode('utf-8')
 		    topSentencesToFile = resp_sent
+		# import pdb; pdb.set_trace()
+		self.rougedir[articleNumber]["predicted"] = topSentencesToFile
+		self.rougedir[articleNumber]["rouge"] = rouge.get_scores(topSentencesToFile,
+																	 self.rougedir[articleNumber]["ground_truth"])
 		outFile.write(topSentencesToFile)
 		outFile.close()
+
+	def to_csv(self, fileName = "output.csv"):
+		field_names = ["id", "ground_truth", "predicted", "rouge-1", "rouge-2", "rouge-l"]
+		with open(fileName, 'w') as f:
+			writer = csv.writer(f)
+			writer.writerow(field_names)
+			rouge_1 = []
+			rouge_2 = []
+			rouge_l = []
+			for key, value in self.rougedir.iteritems():
+				writer.writerow([key,
+									value["ground_truth"],
+									value["predicted"],
+									value["rouge"][0]["rouge-1"]["f"],
+									value["rouge"][0]["rouge-2"]["f"],
+									value["rouge"][0]["rouge-l"]["f"],
+									])
+				rouge_1.append(value["rouge"][0]["rouge-1"]["f"])
+				rouge_2.append(value["rouge"][0]["rouge-2"]["f"])
+				rouge_l.append(value["rouge"][0]["rouge-l"]["f"])
+			writer.writerow(["Mean", "Mean", "Mean",
+							sum(rouge_1)/float(len(rouge_1)),
+							sum(rouge_2)/float(len(rouge_2)),
+							sum(rouge_l)/float(len(rouge_l))])
 
 #corpusPath = ["../crawler/udayavani_cinema_news.json", "../crawler/udayavani_sports_news.json", "../crawler/udayavani_state_news.json"]
 #corpusPath = ["cinema_test.json", "state_test.json","sports_test.json"]
@@ -188,3 +221,4 @@ t.setup()
 # t.extractSummary("state_test.json", "state.json")
 #t.extractSummary("sports_test.json", "sports.json")
 t.extractSummary("sample_data.csv", "sample_data.json")
+t.to_csv()
